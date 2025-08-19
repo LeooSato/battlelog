@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16
+    container_name: battlelog-db
+    environment:
+      POSTGRES_DB: battlelog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: battlelog-app
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"
+    environment:
+      # Quarkus lê essas envs direto
+      QUARKUS_DATASOURCE_DB_KIND: postgresql
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://db:5432/battlelog
+      QUARKUS_DATASOURCE_USERNAME: postgres
+      QUARKUS_DATASOURCE_PASSWORD: root
+      MP_JWT_VERIFY_ISSUER: battlelog
+      SMALLRYE_JWT_SIGN_KEY_ALGORITHM: RS256
+
+      # Se for montar as chaves via volume (opção A), aponte para caminho ABSOLUTO:
+      SMALLRYE_JWT_SIGN_KEY_LOCATION: file:/app/jwt/privateKey.pem
+      MP_JWT_VERIFY_PUBLICKEY_LOCATION: file:/app/jwt/publicKey.pem
+
+    volumes:
+      # Opção A (recomendada): monte as chaves locais dentro do container
+      - ./src/main/resources/jwt:/app/jwt:ro
+
+volumes:
+  pgdata:
